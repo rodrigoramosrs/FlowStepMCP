@@ -1,0 +1,20 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FlowStep.Renderers.MainWindow"
+        Title="FlowStep UI" Height="400" Width="600">
+	<Grid>
+		<StackPanel Margin="10" Spacing="10">
+			<!-- Barra de progresso -->
+			<ProgressBar x:Name="ProgressIndicator" IsIndeterminate="True"
+                         Height="25"/>
+
+			<!-- Mensagem principal -->
+			<TextBlock x:Name="MainMessage" TextWrapping="Wrap" FontSize="14"/>
+
+			<!-- Controles de interação -->
+			<StackPanel x:Name="InteractionControls" Spacing="10">
+				<!-- Aqui vão os controles dinâmicos baseados nas requisições -->
+			</StackPanel>
+		</StackPanel>
+	</Grid>
+</Window>
