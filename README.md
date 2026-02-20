@@ -1,30 +1,28 @@
 # FlowStep - MCP Server for User Interactions
 
-![GitHub Version](https://img.shields.io/badge/version-0.1.0--alpha-red)
-![GitHub Status](https://img.shields.io/badge/status-development-yellow)
+![GitHub Version](https://img.shields.io/badge/version-0.1.0--alpha-red )
+![GitHub Status](https://img.shields.io/badge/status-development-yellow )
 
 # 🚧 **Under Development**
 
+A complete Model Context Protocol (MCP) server designed to facilitate seamless interaction between Large Language Models (LLMs) and end-users. It provides a robust set of tools for notifications, confirmations, selections, and text inputs, supporting multiple rendering modes including Console, GUI, and Telegram Bot.
 
-A complete Model Context Protocol (MCP) server designed to facilitate seamless interaction between Large Language Models (LLMs) and end-users. It provides a robust set of tools for notifications, confirmations, selections, and text inputs, supporting GUI rendering mode.
+[▶️ Watch the demonstration video](assets/StepFlowMCP.mp4)
 
-[▶️ Assista ao vídeo de demonstração](assets/StepFlowMCP.mp4)
-
-![Demonstração do FlowStep](assets/StepFlowMCP.gif)
-
+![FlowStep Demonstration](assets/StepFlowMCP.gif)
 
 ## 🎯 Overview
 
-FlowStep acts as an abstraction layer for user interactions. It exposes standard MCP tools that LLMs can invoke to interact with the user based on the application's configuration (Console or GUI).
+FlowStep acts as an abstraction layer for user interactions. It exposes standard MCP tools that LLMs can invoke to interact with the user based on the application's configuration (Console, GUI, or Telegram).
 
 **Key Capabilities:**
 *   **Notifications**: Display non-blocking or blocking informational messages.
 *   **Confirmations**: Request explicit Yes/No or Cancel confirmation from the user.
 *   **Single & Multi-Selection**: Provide dropdowns or lists for choosing one or multiple options.
-*   **Text Input**: Collect free-form text from the user.
+*   **Text Input**: Collect free-form text from the user with multi-line support.
 *   **Custom Input**: Allow selection from a predefined list *or* custom text entry.
 *   **Progress Reporting**: Visual feedback for long-running operations.
-*   **GUI Support**: Integrated Avalonia UI rendering for modern desktop applications.
+*   **Multiple Render Modes**: Console (CLI), Desktop GUI (Avalonia), or Telegram Bot.
 
 ## 📦 Project Structure
 
@@ -43,38 +41,123 @@ FlowStep.MCP.Library/
 │   └── FlowStepMcpService.cs          # Implementation of MCP Server Tools
 ├── Renderers/
 │   ├── CliInteractionRenderer.cs      # Console-based implementation
-│   ├── AvaloniaUI/
-│   │   ├── AvaloniaUIRenderer.cs      # Main Avalonia GUI renderer
-│   │   ├── Themes/
-│   │   │   └── ThemeColors.cs         # Dark mode color definitions
-│   │   ├── Header/
-│   │   │   └── HeaderContentFactory.cs
-│   │   ├── Footer/
-│   │   │   ├── StandardFooterFactory.cs
-│   │   │   └── NotificationFooterFactory.cs
-│   │   ├── Inputs/
-│   │   │   ├── SingleChoiceInputFactory.cs
-│   │   │   ├── MultiChoiceInputFactory.cs
-│   │   │   ├── TextInputFactory.cs
-│   │   │   └── ChoiceWithTextInputFactory.cs
-│   │   ├── Factories/
-│   │   │   ├── ConfirmationButtonsFactory.cs
-│   │   │   ├── SimpleConfirmationContentFactory.cs
-│   │   │   └── ResponseBuilder.cs
-│   │   └── Styles/
-│   │       └── DarkThemeStyles.cs     # XAML-like styling logic
+│   ├── TelegramRenderer.cs            # Telegram Bot implementation
+│   ├── GuiInteractionBridge.cs        # Bridge for custom GUI implementations
+│   └── AvaloniaUI/
+│       ├── AvaloniaUIRenderer.cs      # Main Avalonia GUI renderer
+│       ├── Themes/
+│       │   └── ThemeColors.cs         # Dark mode color definitions
+│       ├── Header/
+│       │   └── HeaderContentFactory.cs
+│       ├── Footer/
+│       │   ├── StandardFooterFactory.cs
+│       │   └── NotificationFooterFactory.cs
+│       ├── Inputs/
+│       │   ├── SingleChoiceInputFactory.cs
+│       │   ├── MultiChoiceInputFactory.cs
+│       │   ├── TextInputFactory.cs
+│       │   └── ChoiceWithTextInputFactory.cs
+│       ├── Factories/
+│       │   ├── ConfirmationButtonsFactory.cs
+│       │   ├── SimpleConfirmationContentFactory.cs
+│       │   └── ResponseBuilder.cs
+│       └── Styles/
+│           └── DarkThemeStyles.cs     # XAML-like styling logic
 ├── Extensions/
 │   └── FlowStepServiceExtension.cs    # DI Registration helper
 └── FlowStep.MCP.Library.csproj
 ```
 
+## 🖥️ Rendering Modes
 
-## 🌐 Configuration in MCP Clients
+FlowStep supports three rendering modes, configurable at startup:
 
-To integrate FlowStep with your favorite AI editor or client (e.g., **Cursor, Windsurf, Claude Desktop**, or **Cline**), you need to add the server configuration to your client's settings.
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **CLI** | Console/Terminal interface | Headless servers, debugging, automation scripts |
+| **GUI** | Avalonia Desktop application | Rich desktop experience with modern dark UI |
+| **Telegram** | Telegram Bot integration | Remote interactions, mobile notifications, distributed teams |
 
-### 1. HTTP Transport (Recommended)
-Use this configuration if you are running the server via HTTP (e.g., using `dotnet run` or a hosted server).
+### Mode Selection Priority
+
+Configuration is resolved in the following order (highest to lowest priority):
+
+1. **Command Line Arguments**
+2. **Environment Variables** (prefix: `FLOWSTEP_`)
+3. **appsettings.json**
+4. **Default** (GUI)
+
+## ⚙️ Configuration
+
+### Command Line Arguments
+
+```bash
+# GUI Mode (default)
+dotnet run
+
+# CLI Mode
+dotnet run -- --mode cli
+
+# Telegram Mode
+dotnet run -- --mode telegram --telegram-token "123456:ABC-DEF" --telegram-chat-id 123456789
+
+# Custom configuration file
+dotnet run -- --config /path/to/custom-config.json
+```
+
+### Environment Variables
+
+```bash
+# Windows
+set FLOWSTEP_MODE=telegram
+set FLOWSTEP_TELEGRAM__BOTTOKEN=123456:ABC-DEF
+set FLOWSTEP_TELEGRAM__CHATID=123456789
+
+# Linux/Mac
+export FLOWSTEP_MODE=telegram
+export FLOWSTEP_TELEGRAM__BOTTOKEN=123456:ABC-DEF
+export FLOWSTEP_TELEGRAM__CHATID=123456789
+```
+
+### appsettings.json
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Mode": "gui",
+  "Telegram": {
+    "BotToken": "123456:ABC-DEF",
+    "ChatId": "123456789"
+  }
+}
+```
+
+### Environment-Specific Configuration
+
+Create `appsettings.Development.json` or `appsettings.Production.json` for environment-specific overrides:
+
+```json
+{
+  "Mode": "cli",
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
+    }
+  }
+}
+```
+
+## 🌐 MCP Client Configuration
+
+To integrate FlowStep with your favorite AI editor or client (e.g., **Cursor, Windsurf, Claude Desktop**, or **Cline**), add the server configuration to your client's settings.
+
+### HTTP Transport (Recommended)
 
 ```json
 {
@@ -86,8 +169,7 @@ Use this configuration if you are running the server via HTTP (e.g., using `dotn
 }
 ```
 
-### 2. STDIO Transport (Local Execution)
-Use this configuration to launch the server directly from the project folder.
+### STDIO Transport (Local Execution)
 
 ```json
 {
@@ -97,42 +179,40 @@ Use this configuration to launch the server directly from the project folder.
       "args": [
         "run",
         "--project",
-        "src/FlowStep.MCP/FlowStep.MCP.csproj"
+        "src/FlowStep.MCP/FlowStep.MCP.csproj",
+        "--",
+        "--mode",
+        "gui"
       ]
     }
   }
 }
 ```
 
-***
-
-### Note on the previous C# code
-The Dependency Injection code provided in the previous section (`services.AddFlowStep(...)`) is **internal** to your application and is not used for configuring the external MCP client. It is used when you are *developing* the FlowStep server itself.
-
 ## 🛠️ MCP Tools Reference
 
-All tools are exposed via the `FlowStepMcpService` and automatically registered with the MCP server. The descriptions below are extracted from the source code `[Description]` attributes.
+All tools are exposed via the `FlowStepMcpService` and automatically registered with the MCP server.
 
 ### 1. NotifyUserAsync
-Displays a simple notification to the user with a title and message. Can optionally wait for user confirmation or be non-blocking (default).
+Displays a simple notification to the user with a title and message.
 
 *   **Parameters**:
     *   `message` (string): Message to be displayed to the user.
     *   `title` (string): Notification title (optional; default: 'System').
-    *   `waitConfirmation` (bool): If true, waits for user confirmation. Default: false (non-blocking notification).
+    *   `waitConfirmation` (bool): If true, waits for user confirmation. Default: false.
 *   **Returns**: Status of the operation.
 
 ### 2. ConfirmAsync
-Requests user confirmation with a message. Returns 'yes' if confirmed, 'no' if rejected, or 'cancelled' if cancelled.
+Requests user confirmation with a message.
 
 *   **Parameters**:
     *   `message` (string): Confirmation message to the user.
     *   `title` (string): Confirmation title (optional).
-    *   `isCancellable` (bool): Indicates whether the operation can be cancelled by the user (optional; default: true).
+    *   `isCancellable` (bool): Indicates whether the operation can be cancelled (optional; default: true).
 *   **Returns**: "yes", "no", or "cancelled".
 
 ### 3. ChooseOptionAsync
-Allows the user to choose one option among several available ones. Returns the value of the selected option.
+Allows the user to choose one option among several available ones.
 
 *   **Parameters**:
     *   `message` (string): Message describing the available options.
@@ -142,7 +222,7 @@ Allows the user to choose one option among several available ones. Returns the v
 *   **Returns**: Value of the selected option or "custom:{value}" if custom input is provided.
 
 ### 4. ChooseMultipleOptionsAsync
-Allows the user to select multiple options among several available ones. Returns a list containing the values of selected options.
+Allows the user to select multiple options.
 
 *   **Parameters**:
     *   `title` (string): Title of the selection (optional).
@@ -153,13 +233,13 @@ Allows the user to select multiple options among several available ones. Returns
 *   **Returns**: List of values of selected options.
 
 ### 5. AskUserForTextAsync
-Requests that the user type free-form text. Returns the text entered by the user.
+Requests that the user type free-form text. Supports multi-line input in GUI mode.
 
 *   **Parameters**:
     *   `message` (string): Instruction or message to the user.
     *   `title` (string): Title of the text field (optional).
     *   `placeholder` (string): Placeholder text shown in the input field (optional; default: 'Type here...').
-*   **Returns**: The text entered by the user.
+*   **Returns**: The text entered by the user (may contain line breaks).
 
 ### 6. ChooseWithCustomTextAsync
 Allows the user to choose one option and optionally type a custom text.
@@ -172,7 +252,7 @@ Allows the user to choose one option and optionally type a custom text.
 *   **Returns**: Selected option value or custom text prefixed with "custom:".
 
 ### 7. ShowProgressAsync
-Displays a notification indicating the progress of an operation. Useful for long-running tasks or batch processing.
+Displays a notification indicating the progress of an operation.
 
 *   **Parameters**:
     *   `operationName` (string): Descriptive name of the ongoing operation.
@@ -180,24 +260,57 @@ Displays a notification indicating the progress of an operation. Useful for long
     *   `status` (string): Current status or progress message.
 *   **Returns**: Status of the operation.
 
-
-
 ## 🎨 Interaction Types
 
 The library handles six distinct interaction types defined in `InteractionType`:
 
 1.  **Notification**: Simple display (OK).
-2.  **Confirmation**: Sim/Não (Yes/No).
-3.  **SingleChoice**: ComboBox / Radio (Select 1).
+2.  **Confirmation**: Yes/No decision.
+3.  **SingleChoice**: Dropdown / Radio (Select 1).
 4.  **MultiChoice**: Checkboxes (Select N).
-5.  **TextInput**: Text input only.
-6.  **ChoiceWithText**: Options + Custom Text field.
+5.  **TextInput**: Multi-line text input with word wrapping.
+6.  **ChoiceWithText**: Predefined options + Custom text field.
 
 ## 🏗️ Architecture
 
-*   **Service Layer**: `FlowStepService` handles the orchestration and timeout management.
-*   **Renderer Layer**: `IInteractionRenderer` defines the contract. Implementations include `CliInteractionRenderer` and `AvaloniaUIRenderer`.
-*   **MCP Layer**: `FlowStepMcpService` wraps the logic in tools that conform to the Model Context Protocol, allowing LLMs to invoke them transparently.
+*   **Service Layer**: `FlowStepService` handles orchestration and timeout management.
+*   **Renderer Layer**: `IInteractionRenderer` defines the contract. Implementations include:
+    *   `CliInteractionRenderer`: Terminal/console interface
+    *   `AvaloniaUIRenderer`: Modern desktop GUI with dark theme
+    *   `TelegramRenderer`: Telegram Bot API integration
+*   **MCP Layer**: `FlowStepMcpService` exposes tools conforming to the Model Context Protocol.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- .NET 10.0 SDK
+- (Optional) Telegram Bot Token for Telegram mode
+
+### Running in GUI Mode (Default)
+
+```bash
+dotnet run --project src/FlowStep.MCP/FlowStep.MCP.csproj
+```
+
+### Running in CLI Mode
+
+```bash
+dotnet run --project src/FlowStep.MCP/FlowStep.MCP.csproj -- --mode cli
+```
+
+### Running in Telegram Mode
+
+```bash
+# Via arguments
+dotnet run --project src/FlowStep.MCP/FlowStep.MCP.csproj -- --mode telegram --telegram-token "YOUR_TOKEN" --telegram-chat-id 123456789
+
+# Via environment
+export FLOWSTEP_MODE=telegram
+export FLOWSTEP_TELEGRAM__BOTTOKEN="YOUR_TOKEN"
+export FLOWSTEP_TELEGRAM__CHATID=123456789
+dotnet run --project src/FlowStep.MCP/FlowStep.MCP.csproj
+```
 
 ## License
 

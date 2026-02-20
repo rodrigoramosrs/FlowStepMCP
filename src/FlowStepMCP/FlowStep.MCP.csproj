@@ -11,6 +11,7 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.1.26104.118" />
 		<PackageReference Include="Microsoft.SemanticKernel" Version="1.71.0" />
 		<PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.71.0" />
+		<PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
 	</ItemGroup>
 
 	<!-- MCP Support via Microsoft.MCP -->

@@ -23,6 +23,7 @@
 		<PackageReference Include="Avalonia" Version="11.2.3" />
 		<PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
 		<PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+		<PackageReference Include="Telegram.Bot" Version="22.9.0" />
 	</ItemGroup>
 
 	<ItemGroup>
