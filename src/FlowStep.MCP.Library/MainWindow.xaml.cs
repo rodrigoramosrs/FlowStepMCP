@@ -1,6 +1,8 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Microsoft.Extensions.Hosting.Internal;
 
 namespace FlowStep.Renderers
 {
@@ -15,5 +17,7 @@ namespace FlowStep.Renderers
         {
             AvaloniaXamlLoader.Load(this);
         }
+        
+
     }
 }

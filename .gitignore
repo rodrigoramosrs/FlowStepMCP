@@ -489,3 +489,4 @@ solution-config.props
 *.db-shm
 *.db-wal
 /src/FlowStepMCP/_outputs
+/src/_outputs

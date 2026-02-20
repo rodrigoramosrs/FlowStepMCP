@@ -20,25 +20,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Avalonia" Version="11.2.3" />
-		<PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
-		<PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Update="App.xaml">
-			<Generator>MSBuild:Compile</Generator>
-			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
-		</None>
-		<None Update="MainWindow.xaml">
-			<Generator>MSBuild:Compile</Generator>
-			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
-		</None>
+	  <ProjectReference Include="..\FlowStep.MCP.Library\FlowStep.MCP.Library.csproj" />
 	</ItemGroup>
 
 	<!-- Or better yet, use the correct build action for Avalonia -->
-	<ItemGroup>
-		<AvaloniaResource Include="App.xaml" />
-		<AvaloniaResource Include="MainWindow.xaml" />
-	</ItemGroup>
 </Project>

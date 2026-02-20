@@ -7,7 +7,7 @@ namespace FlowStep
 {
     public partial class App : Application
     {
-        public override void Initialize()
+        public override void Initialize()   
         {
             AvaloniaXamlLoader.Load(this);
         }
@@ -17,7 +17,7 @@ namespace FlowStep
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 // Set the main window
-                desktop.MainWindow = new MainWindow();
+                //desktop.MainWindow = new MainWindow();
             }
             base.OnFrameworkInitializationCompleted();
         }
