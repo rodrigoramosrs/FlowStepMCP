@@ -6,6 +6,7 @@ using FlowStep.MCP.Library.Renderers.AvaloniaUI;
 using FlowStep.McpServices;
 using FlowStep.Models;
 using FlowStep.Renderers; // necessário para AvaloniaGuiRenderer
+using FlowStep.Renderers.AvaloniaUI;
 using FlowStep.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -137,14 +138,6 @@ namespace FlowStepExample
             await RunInteractiveDemoAsync(mcpService, flowStepService);
             return true;
         }
-
-        private static AppBuilder BuildAvaloniaApp()
-        {
-            return AppBuilder.Configure<App>()
-                .UsePlatformDetect()
-                .LogToTrace();
-        }
-
         private static async Task RunInteractiveDemoAsync(FlowStepMcpService mcpService, IFlowStepService flowStepService)
         {
             int choice = 0;

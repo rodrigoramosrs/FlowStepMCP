@@ -4,6 +4,7 @@ using FlowStep.Contracts;
 using FlowStep.Services;
 using FlowStep.Renderers;
 using FlowStep.MCP.Library.Renderers.AvaloniaUI;
+using FlowStep.Renderers.AvaloniaUI;
 
 namespace FlowStep.Extensions
 {

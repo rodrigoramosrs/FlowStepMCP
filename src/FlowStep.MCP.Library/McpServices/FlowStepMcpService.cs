@@ -13,7 +13,7 @@ using System.ComponentModel;
 namespace FlowStep.McpServices
 {
     /// <summary>
-    /// Serviço MCP para interações com usuário via FlowStep
+    /// MCP service for user interactions via FlowStep.
     /// </summary>
     [McpServerToolType]
     public class FlowStepMcpService
@@ -28,34 +28,34 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Exibe uma notificação simples para o usuário, podendo aguardar confirmação.
+        /// Displays a simple notification to the user, optionally waiting for confirmation.
         /// </summary>
-        /// <param name="message">Mensagem a ser exibida</param>
-        /// <param name="title">Título da notificação (opcional, padrão: "Sistema")</param>
+        /// <param name="message">Message to be displayed</param>
+        /// <param name="title">Notification title (optional; default: "System")</param>
         /// <param name="waitConfirmation">
-        /// Se true, aguarda confirmação do usuário. Útil para ações críticas.
-        /// Se false (padrão), não bloqueia o progresso da task — ideal para notificações informativas.
+        /// If true, waits for user confirmation. Useful for critical actions.
+        /// If false (default), does not block task progress—ideal for informative notifications.
         /// </param>
-        /// <returns>Status da operação</returns>
+        /// <returns>Status of the operation</returns>
         [McpServerTool]
-        [Description("Exibe uma notificação simples para o usuário com um título e mensagem. Pode aguardar confirmação do usuário ou ser não bloqueante (padrão).")]
+        [Description("Displays a simple notification to the user with a title and message. Can optionally wait for user confirmation or be non-blocking (default).")]
         public async Task<string> NotifyUserAsync(
-            [Description("Mensagem a ser exibida ao usuário")]
-    string message,
-            [Description("Título da notificação (opcional, padrão: 'Sistema')")]
-    string title,
-            [Description("Se true, aguarda confirmação do usuário. Padrão: false (notificação não bloqueante).")]
-    bool waitConfirmation = false)
+            [Description("Message to be displayed to the user")]
+            string message,
+            [Description("Notification title (optional; default: 'System')")]
+            string title,
+            [Description("If true, waits for user confirmation. Default: false (non-blocking notification).")]
+            bool waitConfirmation = false)
         {
             _logger.LogInformation(
-                "Notificação solicitada: {Title} - {Message} | Aguardar Confirmação: {Wait}",
-                title ?? "Sistema",
+                "Notification requested: {Title} - {Message} | Wait Confirmation: {Wait}",
+                title ?? "System",
                 message,
                 waitConfirmation);
 
             var request = new InteractionRequest
             {
-                Title = title ?? "Sistema",
+                Title = title ?? "System",
                 Message = message,
                 Type = waitConfirmation ? InteractionType.Confirmation : InteractionType.Notification
             };
@@ -63,7 +63,7 @@ namespace FlowStep.McpServices
             if (!waitConfirmation)
             {
                 Task.Run(() => _flowStepService.InteractAsync(request));
-                return $"Notificação exibida. Usuário não confirmou.";
+                return $"Notification displayed. User did not confirm.";
             }
             else
             {
@@ -71,37 +71,36 @@ namespace FlowStep.McpServices
 
                 if (response.Success)
                 {
-                    return $"Notificação {(waitConfirmation ? "confirmada" : "exibida")} com sucesso: {message}";
+                    return $"Notification {(waitConfirmation ? "confirmed" : "displayed")} successfully: {message}";
                 }
             }
 
-
-            return $"Falha ao exibir notificação.";
+            return $"Failed to display notification.";
         }
 
 
         /// <summary>
-        /// Solicita confirmação do usuário (Sim/Não)
+        /// Requests user confirmation (Yes/No).
         /// </summary>
-        /// <param name="message">Mensagem de confirmação</param>
-        /// <param name="title">Título da confirmação (opcional)</param>
-        /// <param name="isCancellable">Se pode ser cancelado (opcional, padrão: true)</param>
-        /// <returns>Resposta do usuário: "yes" ou "no"</returns>
+        /// <param name="message">Confirmation message</param>
+        /// <param name="title">Confirmation title (optional)</param>
+        /// <param name="isCancellable">Whether the operation can be cancelled by the user (optional; default: true)</param>
+        /// <returns>User response: "yes", "no", or "cancelled"</returns>
         [McpServerTool]
-        [Description("Solicita confirmação do usuário com uma mensagem. Retorna 'yes' se confirmado ou 'no' se rejeitado. Útil para ações críticas ou decisões importantes.")]
+        [Description("Requests user confirmation with a message. Returns 'yes' if confirmed, 'no' if rejected, or 'cancelled' if cancelled. Useful for critical actions or important decisions.")]
         public async Task<string> ConfirmAsync(
-            [Description("Mensagem de confirmação para o usuário")]
+            [Description("Confirmation message to the user")]
             string message,
-            [Description("Título da confirmação (opcional)")]
+            [Description("Confirmation title (optional)")]
             string title,
-            [Description("Indica se a operação pode ser cancelada pelo usuário (opcional, padrão: true)")]
+            [Description("Indicates whether the operation can be cancelled by the user (optional; default: true)")]
             bool isCancellable = true)
         {
-            _logger.LogInformation("Confirmação solicitada: {Title} - {Message}", title ?? "Sistema", message);
+            _logger.LogInformation("Confirmation requested: {Title} - {Message}", title ?? "System", message);
 
             var request = new InteractionRequest
             {
-                Title = title ?? "Sistema",
+                Title = title ?? "System",
                 Message = message,
                 Type = InteractionType.Confirmation,
                 IsCancellable = isCancellable
@@ -123,30 +122,30 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Permite que o usuário escolha uma opção entre várias
+        /// Allows the user to choose one option among several.
         /// </summary>
-        /// <param name="message">Mensagem de escolha</param>
-        /// <param name="options">Lista de opções disponíveis</param>
-        /// <param name="title">Título da escolha (opcional)</param>
-        /// <param name="allowCustomInput">Permite opção personalizada (opcional, padrão: false)</param>
-        /// <returns>Valor da opção selecionada</returns>
+        /// <param name="message">Choice message</param>
+        /// <param name="options">List of available options</param>
+        /// <param name="title">Title of the choice (optional)</param>
+        /// <param name="allowCustomInput">Whether to allow a custom input option (optional; default: false)</param>
+        /// <returns>Value of the selected option or "custom:{value}" if a custom value is provided</returns>
         [McpServerTool]
-        [Description("Permite que o usuário escolha uma opção entre várias disponíveis. Retorna o valor da opção selecionada. Útil para seleções simples de usuário.")]
+        [Description("Allows the user to choose one option among several available ones. Returns the value of the selected option. Useful for simple user selections.")]
         public async Task<string> ChooseOptionAsync(
-            [Description("Mensagem descrevendo as opções disponíveis")]
+            [Description("Message describing the available options")]
             string message,
-            [Description("Lista de opções disponíveis para seleção. Cada opção tem Label, Value e pode ter IsDefault")]
+            [Description("List of options available for selection. Each option has Label, Value, and may have IsDefault")]
             List<InteractionOption> options,
-            [Description("Título da escolha (opcional)")]
+            [Description("Title of the choice (optional)")]
             string title,
-            [Description("Permite que o usuário digite uma opção personalizada (opcional, padrão: false)")]
+            [Description("Whether to allow the user to type a custom option (optional; default: false)")]
             bool allowCustomInput = false)
         {
-            _logger.LogInformation("Escolha solicitada: {Title} - {Message}", title ?? "Sistema", message);
+            _logger.LogInformation("Choice requested: {Title} - {Message}", title ?? "System", message);
 
             var request = new InteractionRequest
             {
-                Title = title ?? "Sistema",
+                Title = title ?? "System",
                 Message = message,
                 Type = allowCustomInput ? InteractionType.ChoiceWithText : InteractionType.SingleChoice,
                 Options = options,
@@ -174,33 +173,33 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Permite que o usuário selecione múltiplas opções
+        /// Allows the user to select multiple options.
         /// </summary>
-        /// <param name="message">Mensagem de seleção múltipla</param>
-        /// <param name="options">Lista de opções disponíveis</param>
-        /// <param name="minSelections">Mínimo de seleções obrigatórias (opcional, padrão: 0)</param>
-        /// <param name="maxSelections">Máximo de seleções permitidas (opcional, padrão: 1)</param>
-        /// <param name="title">Título da seleção (opcional)</param>
-        /// <returns>Lista de valores das opções selecionadas</returns>
+        /// <param name="message">Multiple-selection message</param>
+        /// <param name="options">List of available options</param>
+        /// <param name="minSelections">Minimum required selections (optional; default: 0)</param>
+        /// <param name="maxSelections">Maximum allowed selections (optional; default: 1)</param>
+        /// <param name="title">Title of the selection (optional)</param>
+        /// <returns>List of values of selected options</returns>
         [McpServerTool]
-        [Description("Permite que o usuário selecione múltiplas opções entre várias disponíveis. Retorna uma lista com os valores das opções selecionadas. Útil para seleções múltiplas como filtros ou múltiplos itens.")]
+        [Description("Allows the user to select multiple options among several available ones. Returns a list containing the values of selected options. Useful for multi-select scenarios such as filters or multiple items.")]
         public async Task<List<string>> ChooseMultipleOptionsAsync(
-            [Description("Título da seleção (opcional)")]
+            [Description("Title of the selection (optional)")]
             string title,
-            [Description("Mensagem descrevendo as opções disponíveis")]
+            [Description("Message describing the available options")]
             string message,
-            [Description("Lista de opções disponíveis para seleção. Cada opção tem Label, Value e pode ter IsDefault")]
+            [Description("List of options available for selection. Each option has Label, Value, and may have IsDefault")]
             List<InteractionOption> options,
-            [Description("Número mínimo de seleções obrigatórias (opcional, padrão: 0)")]
+            [Description("Minimum number of required selections (optional; default: 0)")]
             int minSelections = 0,
-            [Description("Número máximo de seleções permitidas (opcional, padrão: 1)")]
+            [Description("Maximum number of allowed selections (optional; default: 1)")]
             int maxSelections = 1)
         {
-            _logger.LogInformation("Seleção múltipla solicitada: {Title} - {Message}", title ?? "Sistema", message);
+            _logger.LogInformation("Multiple selection requested: {Title} - {Message}", title ?? "System", message);
 
             var request = new InteractionRequest
             {
-                Title = title ?? "Sistema",
+                Title = title ?? "System",
                 Message = message,
                 Type = InteractionType.MultiChoice,
                 Options = options,
@@ -229,30 +228,30 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Solicita entrada de texto livre do usuário
+        /// Requests free-form text input from the user.
         /// </summary>
-        /// <param name="message">Instrução para o usuário</param>
-        /// <param name="title">Título do input (opcional)</param>
-        /// <param name="placeholder">Texto de placeholder (opcional, padrão: "Digite aqui...")</param>
-        /// <returns>O texto digitado pelo usuário</returns>
+        /// <param name="message">Instruction or prompt for the user</param>
+        /// <param name="title">Title of the text field (optional)</param>
+        /// <param name="placeholder">Placeholder text (optional; default: "Type here...")</param>
+        /// <returns>The text entered by the user</returns>
         [McpServerTool]
-        [Description("Solicita que o usuário digite um texto livre. Retorna o texto digitado pelo usuário. Útil para inputs de dados como nome, descrição, comentários, etc.")]
+        [Description("Requests that the user type free-form text. Returns the text entered by the user. Useful for data inputs such as name, description, comments, etc.")]
         public async Task<string> AskUserForTextAsync(
-            [Description("Instrução ou mensagem para o usuário")]
+            [Description("Instruction or message to the user")]
             string message,
-            [Description("Título do campo de texto (opcional)")]
+            [Description("Title of the text field (optional)")]
             string? title,
-            [Description("Texto que aparecerá no campo de entrada (opcional, padrão: 'Digite aqui...')")]
+            [Description("Placeholder text shown in the input field (optional; default: 'Type here...')")]
             string placeholder)
         {
-            _logger.LogInformation("Input de texto solicitado: {Title} - {Message}", title ?? "Sistema", message);
+            _logger.LogInformation("Text input requested: {Title} - {Message}", title ?? "System", message);
 
             var request = new InteractionRequest
             {
-                Title = title ?? "Sistema",
+                Title = title ?? "System",
                 Message = message,
                 Type = InteractionType.TextInput,
-                CustomInputPlaceholder = placeholder ?? "Digite aqui..."
+                CustomInputPlaceholder = placeholder ?? "Type here..."
             };
 
             var response = await _flowStepService.InteractAsync(request);
@@ -266,35 +265,35 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Solicita que o usuário escolha uma opção e digite um texto personalizado
+        /// Requests the user to select an option and optionally type a custom text.
         /// </summary>
-        /// <param name="message">Mensagem de instrução</param>
-        /// <param name="options">Lista de opções disponíveis</param>
-        /// <param name="title">Título da interação (opcional)</param>
-        /// <param name="placeholder">Texto de placeholder para o campo personalizado (opcional)</param>
-        /// <returns>Valor da opção ou texto personalizado</returns>
+        /// <param name="message">Instruction message</param>
+        /// <param name="options">List of available options</param>
+        /// <param name="title">Title of the interaction (optional)</param>
+        /// <param name="placeholder">Placeholder for the custom text field (optional)</param>
+        /// <returns>Selected option value or custom text prefixed with "custom:"</returns>
         [McpServerTool]
-        [Description("Permite que o usuário escolha uma opção e digite um texto personalizado. Retorna a opção selecionada ou o texto personalizado. Útil para cenários onde o usuário pode escolher entre opções predefinidas ou fornecer uma resposta personalizada.")]
+        [Description("Allows the user to choose one option and optionally type a custom text. Returns either the selected option or the custom text. Useful when users may select from predefined options or provide a custom response.")]
         public async Task<string> ChooseWithCustomTextAsync(
-            [Description("Mensagem de instrução para o usuário")]
+            [Description("Instruction message for the user")]
             string message,
-            [Description("Lista de opções disponíveis para seleção. Cada opção tem Label, Value e pode ter IsDefault")]
+            [Description("List of options available for selection. Each option has Label, Value, and may have IsDefault")]
             List<InteractionOption> options,
-            [Description("Título da interação (opcional)")]
+            [Description("Title of the interaction (optional)")]
             string title,
-            [Description("Texto de placeholder para o campo de texto personalizado (opcional)")]
+            [Description("Placeholder text for the custom text input field (optional)")]
             string placeholder)
         {
-            _logger.LogInformation("Escolha com texto personalizado solicitada: {Title} - {Message}", title ?? "Sistema", message);
+            _logger.LogInformation("Choice with custom text requested: {Title} - {Message}", title ?? "System", message);
 
             var request = new InteractionRequest
             {
-                Title = title ?? "Sistema",
+                Title = title ?? "System",
                 Message = message,
                 Type = InteractionType.ChoiceWithText,
                 Options = options,
                 AllowCustomInput = true,
-                CustomInputPlaceholder = placeholder ?? "Digite aqui..."
+                CustomInputPlaceholder = placeholder ?? "Type here..."
             };
 
             var response = await _flowStepService.InteractAsync(request);
@@ -318,26 +317,26 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Exibe uma notificação com barra de progresso
+        /// Displays a notification with progress bar.
         /// </summary>
-        /// <param name="operationName">Nome da operação</param>
-        /// <param name="total">Total de itens a processar</param>
-        /// <param name="status">Status atual da operação</param>
-        /// <returns>Status da operação</returns>
+        /// <param name="operationName">Name of the operation</param>
+        /// <param name="total">Total number of items to process</param>
+        /// <param name="status">Current status or progress message</param>
+        /// <returns>Status of the operation</returns>
         [McpServerTool]
-        [Description("Exibe uma notificação indicando o progresso de uma operação. Útil para indicar o progresso de tarefas longas ou processamento em lote.")]
+        [Description("Displays a notification indicating the progress of an operation. Useful for long-running tasks or batch processing.")]
         public async Task<string> ShowProgressAsync(
-            [Description("Nome descritivo da operação em andamento")]
+            [Description("Descriptive name of the ongoing operation")]
             string operationName,
-            [Description("Número total de itens a processar")]
+            [Description("Total number of items to process")]
             int total,
-            [Description("Status atual ou mensagem de progresso")]
+            [Description("Current status or progress message")]
             string status)
         {
-            _logger.LogInformation("Progresso solicitado: {Operation} - {Status}", operationName, status);
+            _logger.LogInformation("Progress requested: {Operation} - {Status}", operationName, status);
 
             //TODO: IMPLEMENT HERE. 
-            return $"Operação '{operationName}' concluída com sucesso.";
+            return $"Operation '{operationName}' completed successfully.";
         }
     }
 }
