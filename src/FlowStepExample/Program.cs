@@ -2,6 +2,7 @@
 using FlowStep;
 using FlowStep.Contracts;
 using FlowStep.Extensions;
+using FlowStep.MCP.Library.Renderers.AvaloniaUI;
 using FlowStep.McpServices;
 using FlowStep.Models;
 using FlowStep.Renderers; // necessário para AvaloniaGuiRenderer
@@ -100,8 +101,8 @@ namespace FlowStepExample
             else
             {
                 // GUI: AvaloniaGuiRenderer precisa ser registrado como singleton *e* IInteractionRenderer aponta para ele
-                services.AddSingleton<AvaloniaGuiRenderer>();
-                services.AddSingleton<IInteractionRenderer>(sp => sp.GetRequiredService<AvaloniaGuiRenderer>());
+                services.AddSingleton<AvaloniaUIRenderer>();
+                services.AddSingleton<IInteractionRenderer>(sp => sp.GetRequiredService<AvaloniaUIRenderer>());
             }
 
             // Registrar FlowStepService (depende de renderer)
@@ -117,7 +118,7 @@ namespace FlowStepExample
             {
                 try
                 {
-                    var guiRenderer = serviceProvider.GetRequiredService<AvaloniaGuiRenderer>();
+                    var guiRenderer = serviceProvider.GetRequiredService<AvaloniaUIRenderer>();
                     await guiRenderer.InitializeAsync(); // Garante que MainWindow seja criado
                 }
                 catch (Exception ex)
@@ -232,7 +233,7 @@ namespace FlowStepExample
                             var choiceWithText = await mcpService.ChooseWithCustomTextAsync(
                                 message: "Escolha uma cor ou digite outra:",
                                 options: choiceOptions,
-                                title: "Escolha com texto personalizado");
+                                title: "Escolha com texto personalizado", "");
                             Console.WriteLine($"Resultado: {choiceWithText}");
                             break;
 

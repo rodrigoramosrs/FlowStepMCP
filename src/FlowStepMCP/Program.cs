@@ -1,5 +1,6 @@
 using Avalonia;
 using FlowStep.Extensions;
+using FlowStep.McpServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,7 +22,7 @@ namespace FlowStep
             builder.Services.AddMcpServer()
                 .WithStdioServerTransport()
                 .WithHttpTransport()
-                .WithToolsFromAssembly();
+                .WithToolsFromAssembly(typeof(FlowStepMcpService).Assembly); // Assembly explícito
 
             builder.Services.AddCors(options =>
             {
@@ -43,7 +44,6 @@ namespace FlowStep
             app.UseCors();
             app.MapMcp();
             app.MapControllers();
-
             // Inicia o servidor web em background
             var webHostCts = new CancellationTokenSource();
             var webHostTask = Task.Run(() => app.RunAsync(webHostCts.Token), webHostCts.Token);

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using FlowStep.Contracts;
 using FlowStep.Services;
 using FlowStep.Renderers;
+using FlowStep.MCP.Library.Renderers.AvaloniaUI;
 
 namespace FlowStep.Extensions
 {
@@ -21,8 +22,8 @@ namespace FlowStep.Extensions
             else
             {
                 // No modo GUI, registramos o novo renderizador Avalonia.
-                services.AddSingleton<AvaloniaGuiRenderer>();
-                services.AddSingleton<IInteractionRenderer>(sp => sp.GetRequiredService<AvaloniaGuiRenderer>());
+                services.AddSingleton<AvaloniaUIRenderer>();
+                services.AddSingleton<IInteractionRenderer>(sp => sp.GetRequiredService<AvaloniaUIRenderer>());
             }
 
             services.AddSingleton<IFlowStepService, FlowStepService>();

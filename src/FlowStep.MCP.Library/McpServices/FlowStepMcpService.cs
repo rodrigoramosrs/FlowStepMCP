@@ -28,37 +28,57 @@ namespace FlowStep.McpServices
         }
 
         /// <summary>
-        /// Exibe uma notificação simples para o usuário
+        /// Exibe uma notificação simples para o usuário, podendo aguardar confirmação.
         /// </summary>
         /// <param name="message">Mensagem a ser exibida</param>
         /// <param name="title">Título da notificação (opcional, padrão: "Sistema")</param>
+        /// <param name="waitConfirmation">
+        /// Se true, aguarda confirmação do usuário. Útil para ações críticas.
+        /// Se false (padrão), não bloqueia o progresso da task — ideal para notificações informativas.
+        /// </param>
         /// <returns>Status da operação</returns>
         [McpServerTool]
-        [Description("Exibe uma notificação simples para o usuário com um título e mensagem. Útil para informar o usuário sobre o estado atual da aplicação ou ações realizadas.")]
+        [Description("Exibe uma notificação simples para o usuário com um título e mensagem. Pode aguardar confirmação do usuário ou ser não bloqueante (padrão).")]
         public async Task<string> NotifyUserAsync(
             [Description("Mensagem a ser exibida ao usuário")]
-            string message,
+    string message,
             [Description("Título da notificação (opcional, padrão: 'Sistema')")]
-            string? title = null)
+    string title,
+            [Description("Se true, aguarda confirmação do usuário. Padrão: false (notificação não bloqueante).")]
+    bool waitConfirmation = false)
         {
-            _logger.LogInformation("Notificação solicitada: {Title} - {Message}", title ?? "Sistema", message);
+            _logger.LogInformation(
+                "Notificação solicitada: {Title} - {Message} | Aguardar Confirmação: {Wait}",
+                title ?? "Sistema",
+                message,
+                waitConfirmation);
 
             var request = new InteractionRequest
             {
                 Title = title ?? "Sistema",
                 Message = message,
-                Type = InteractionType.Notification
+                Type = waitConfirmation ? InteractionType.Confirmation : InteractionType.Notification
             };
 
-            var response = await _flowStepService.InteractAsync(request);
-
-            if (response.Success)
+            if (!waitConfirmation)
             {
-                return $"Notificação exibida com sucesso: {message}";
+                Task.Run(() => _flowStepService.InteractAsync(request));
+                return $"Notificação exibida. Usuário não confirmou.";
             }
+            else
+            {
+                var response = await _flowStepService.InteractAsync(request);
+
+                if (response.Success)
+                {
+                    return $"Notificação {(waitConfirmation ? "confirmada" : "exibida")} com sucesso: {message}";
+                }
+            }
+
 
             return $"Falha ao exibir notificação.";
         }
+
 
         /// <summary>
         /// Solicita confirmação do usuário (Sim/Não)
@@ -73,7 +93,7 @@ namespace FlowStep.McpServices
             [Description("Mensagem de confirmação para o usuário")]
             string message,
             [Description("Título da confirmação (opcional)")]
-            string? title = null,
+            string title,
             [Description("Indica se a operação pode ser cancelada pelo usuário (opcional, padrão: true)")]
             bool isCancellable = true)
         {
@@ -118,7 +138,7 @@ namespace FlowStep.McpServices
             [Description("Lista de opções disponíveis para seleção. Cada opção tem Label, Value e pode ter IsDefault")]
             List<InteractionOption> options,
             [Description("Título da escolha (opcional)")]
-            string? title = null,
+            string title,
             [Description("Permite que o usuário digite uma opção personalizada (opcional, padrão: false)")]
             bool allowCustomInput = false)
         {
@@ -165,6 +185,8 @@ namespace FlowStep.McpServices
         [McpServerTool]
         [Description("Permite que o usuário selecione múltiplas opções entre várias disponíveis. Retorna uma lista com os valores das opções selecionadas. Útil para seleções múltiplas como filtros ou múltiplos itens.")]
         public async Task<List<string>> ChooseMultipleOptionsAsync(
+            [Description("Título da seleção (opcional)")]
+            string title,
             [Description("Mensagem descrevendo as opções disponíveis")]
             string message,
             [Description("Lista de opções disponíveis para seleção. Cada opção tem Label, Value e pode ter IsDefault")]
@@ -172,9 +194,7 @@ namespace FlowStep.McpServices
             [Description("Número mínimo de seleções obrigatórias (opcional, padrão: 0)")]
             int minSelections = 0,
             [Description("Número máximo de seleções permitidas (opcional, padrão: 1)")]
-            int maxSelections = 1,
-            [Description("Título da seleção (opcional)")]
-            string? title = null)
+            int maxSelections = 1)
         {
             _logger.LogInformation("Seleção múltipla solicitada: {Title} - {Message}", title ?? "Sistema", message);
 
@@ -221,9 +241,9 @@ namespace FlowStep.McpServices
             [Description("Instrução ou mensagem para o usuário")]
             string message,
             [Description("Título do campo de texto (opcional)")]
-            string? title = null,
+            string? title,
             [Description("Texto que aparecerá no campo de entrada (opcional, padrão: 'Digite aqui...')")]
-            string? placeholder = null)
+            string placeholder)
         {
             _logger.LogInformation("Input de texto solicitado: {Title} - {Message}", title ?? "Sistema", message);
 
@@ -261,9 +281,9 @@ namespace FlowStep.McpServices
             [Description("Lista de opções disponíveis para seleção. Cada opção tem Label, Value e pode ter IsDefault")]
             List<InteractionOption> options,
             [Description("Título da interação (opcional)")]
-            string? title = null,
+            string title,
             [Description("Texto de placeholder para o campo de texto personalizado (opcional)")]
-            string? placeholder = null)
+            string placeholder)
         {
             _logger.LogInformation("Escolha com texto personalizado solicitada: {Title} - {Message}", title ?? "Sistema", message);
 
@@ -316,12 +336,7 @@ namespace FlowStep.McpServices
         {
             _logger.LogInformation("Progresso solicitado: {Operation} - {Status}", operationName, status);
 
-            // Simulação de progresso
-            for (int i = 1; i <= total; i++)
-            {
-                await Task.Delay(100);
-            }
-
+            //TODO: IMPLEMENT HERE. 
             return $"Operação '{operationName}' concluída com sucesso.";
         }
     }

@@ -11,22 +11,32 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FlowStep.Contracts;
 using FlowStep.Models;
+using FlowStep.Renderers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace FlowStep.Renderers
+namespace FlowStep.MCP.Library.Renderers.AvaloniaUI
 {
     /// <summary>
     /// Renderizador Avalonia que exibe interações dinâmicas (notificações, prompts, progresso).
+    /// Compatível com versões do Avalonia onde Close(result) pode não estar disponível:
+    /// usa TaskCompletionSource para garantir que o ShowDialog retorne um InteractionResponse.
     /// </summary>
-    public class AvaloniaGuiRenderer : IInteractionRenderer, IDisposable
+    public class AvaloniaUIRenderer : IInteractionRenderer, IDisposable
     {
         private readonly object _lock = new();
         private MainWindow? _mainWindow;
         private bool _disposed = false;
+
+        // Referências aos controles de input para acessar valores no footer
+        private ComboBox? _currentComboBox;
+        private List<CheckBox>? _currentCheckBoxes;
+        private TextBox? _currentTextBox;
+        private TextBox? _currentCustomTextBox;
+        private InteractionRequest? _currentRequest;
 
         public event Func<InteractionRequest, Task<InteractionResponse>>? OnInteractionRequested;
         public event Action<string, int, int, string>? OnProgressUpdate;
@@ -49,6 +59,10 @@ namespace FlowStep.Renderers
             });
         }
 
+        /// <summary>
+        /// Renderiza a interação e retorna um InteractionResponse garantido (nunca null).
+        /// Usa TaskCompletionSource para receber o resultado do diálogo.
+        /// </summary>
         public async Task<InteractionResponse> RenderAsync(InteractionRequest request, CancellationToken ct)
         {
             if (_disposed) return new InteractionResponse { Cancelled = true };
@@ -133,9 +147,17 @@ namespace FlowStep.Renderers
 
         /// <summary>
         /// Cria um Window (diálogo) com tema Dark moderno, responsivo e alta qualidade visual.
+        /// Botões ficam sempre fixos no footer, fora do ScrollViewer, para garantir acessibilidade.
         /// </summary>
         private Window CreateDialog(InteractionRequest request, TaskCompletionSource<InteractionResponse?> tcs)
         {
+            // Limpar referências anteriores
+            _currentComboBox = null;
+            _currentCheckBoxes = null;
+            _currentTextBox = null;
+            _currentCustomTextBox = null;
+            _currentRequest = request;
+
             var theme = new ThemeColors
             {
                 Background = Color.Parse("#0F0F12"),
@@ -157,10 +179,10 @@ namespace FlowStep.Renderers
                 Warning = Color.Parse("#F59E0B")
             };
 
-            const double MAX_WIDTH = 560;
-            const double MIN_WIDTH = 360;
-            const double MAX_HEIGHT = 640;
-            const double MIN_HEIGHT = 240;
+            const double MAX_WIDTH = 768;
+            const double MIN_WIDTH = 600;
+            const double MAX_HEIGHT = 1024;
+            const double MIN_HEIGHT = 800;
 
             var dialog = new Window
             {
@@ -183,6 +205,13 @@ namespace FlowStep.Renderers
             {
                 if (!tcs.Task.IsCompleted)
                     tcs.TrySetResult(new InteractionResponse { Cancelled = true });
+
+                // Limpar referências ao fechar
+                _currentComboBox = null;
+                _currentCheckBoxes = null;
+                _currentTextBox = null;
+                _currentCustomTextBox = null;
+                _currentRequest = null;
             };
 
             var mainGrid = new Grid
@@ -208,34 +237,103 @@ namespace FlowStep.Renderers
             Grid.SetRow(headerBorder, 0);
             mainGrid.Children.Add(headerBorder);
 
-            // === CONTENT ===
-            var contentControl = CreateContentControl(request, dialog, tcs, theme);
-            Grid.SetRow(contentControl, 1);
-            mainGrid.Children.Add(contentControl);
-
-            // === FOOTER (apenas para Notification) ===
-            var footerContent = CreateFooterPanel(request, tcs, dialog, theme);
-            if (footerContent != null)
+            // === CONTENT E FOOTER ===
+            if (request.Type == InteractionType.Notification)
             {
-                var footerBorder = new Border
+                // Notification: sem conteúdo scrollável, apenas footer com botão
+                var emptyContent = new Border
                 {
-                    Background = new SolidColorBrush(theme.Surface),
-                    BorderBrush = new SolidColorBrush(theme.Border),
-                    BorderThickness = new Thickness(0, 1, 0, 0),
-                    Padding = new Thickness(24, 16, 24, 20),
-                    Child = footerContent
+                    Background = new SolidColorBrush(theme.Background),
+                    MinHeight = 20
+                };
+                Grid.SetRow(emptyContent, 1);
+                mainGrid.Children.Add(emptyContent);
+
+                var notificationFooter = CreateNotificationFooter(tcs, dialog, theme);
+                Grid.SetRow(notificationFooter, 2);
+                mainGrid.Children.Add(notificationFooter);
+            }
+            else if (request.Type == InteractionType.Confirmation && request.Options?.Count > 0)
+            {
+                // Confirmation com opções customizadas: botões são o próprio conteúdo
+                var confirmationPanel = CreateConfirmationButtonsPanel(request, dialog, tcs, theme);
+
+                // Envolver em ScrollViewer caso haja muitos botões
+                var scrollViewer = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Padding = new Thickness(24, 20, 24, 24),
+                    Background = new SolidColorBrush(theme.Background),
+                    Content = confirmationPanel
                 };
 
-                Grid.SetRow(footerBorder, 2);
-                mainGrid.Children.Add(footerBorder);
+                Grid.SetRow(scrollViewer, 1);
+                mainGrid.Children.Add(scrollViewer);
+
+                // Sem footer para Confirmation com opções customizadas
+                var emptyFooter = new Border { Height = 0 };
+                Grid.SetRow(emptyFooter, 2);
+                mainGrid.Children.Add(emptyFooter);
             }
             else
             {
-                // Ajustar padding inferior do conteúdo quando não há footer
-                if (contentControl is ScrollViewer sv)
+                // Demais tipos: inputs no ScrollViewer + botões fixos no footer
+                var contentPanel = new StackPanel { Spacing = 16 };
+
+                // Criar inputs específicos e guardar referências
+                switch (request.Type)
                 {
-                    sv.Padding = new Thickness(24, 20, 24, 24);
+                    case InteractionType.Confirmation:
+                        // Confirmation sem opções: usar radio buttons ou simples
+                        var confirmationContent = CreateSimpleConfirmationContent(request, theme);
+                        contentPanel.Children.Add(confirmationContent);
+                        break;
+
+                    case InteractionType.SingleChoice:
+                        _currentComboBox = CreateSingleChoiceComboBox(request, theme);
+                        contentPanel.Children.Add(_currentComboBox);
+                        break;
+
+                    case InteractionType.MultiChoice:
+                        _currentCheckBoxes = CreateMultiChoiceCheckBoxes(request, theme);
+                        foreach (var cb in _currentCheckBoxes)
+                        {
+                            contentPanel.Children.Add(cb);
+                        }
+                        break;
+
+                    case InteractionType.TextInput:
+                        _currentTextBox = CreateTextInputBox(request, theme);
+                        contentPanel.Children.Add(_currentTextBox);
+                        break;
+
+                    case InteractionType.ChoiceWithText:
+                        var (combo, textBox) = CreateChoiceWithTextControls(request, theme);
+                        _currentComboBox = combo;
+                        _currentCustomTextBox = textBox;
+                        contentPanel.Children.Add(_currentComboBox);
+                        contentPanel.Children.Add(_currentCustomTextBox);
+                        break;
                 }
+
+                // ScrollViewer contendo APENAS os inputs (sem botões)
+                var scrollViewer = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Padding = new Thickness(24, 20, 24, 20),
+                    Background = new SolidColorBrush(theme.Background),
+                    Content = contentPanel
+                };
+
+                Grid.SetRow(scrollViewer, 1);
+                mainGrid.Children.Add(scrollViewer);
+
+                // Footer fixo com botões Cancelar/Confirmar
+                var standardFooter = CreateStandardFooter(tcs, dialog, theme, request.Type);
+                Grid.SetRow(standardFooter, 2);
+                mainGrid.Children.Add(standardFooter);
             }
 
             // Container final com sombra
@@ -259,7 +357,7 @@ namespace FlowStep.Renderers
                         Blur = 32,
                         Spread = 0,
                         Color = new Color(0x60, 0x00, 0x00, 0x00)
-                    }}
+                    } }
                 ),
                 Child = mainGrid
             };
@@ -300,7 +398,7 @@ namespace FlowStep.Renderers
                     Foreground = new SolidColorBrush(theme.TextSecondary),
                     TextWrapping = TextWrapping.Wrap,
                     LineHeight = 22,
-                    MaxWidth = maxWidth - 48
+                    MaxWidth = maxWidth - 28
                 });
             }
 
@@ -308,65 +406,10 @@ namespace FlowStep.Renderers
         }
 
         /// <summary>
-        /// Cria o controle de conteúdo principal (ScrollViewer com input dinâmico)
+        /// Cria footer para Notification (botão único)
         /// </summary>
-        private Control CreateContentControl(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs, ThemeColors theme)
+        private Border CreateNotificationFooter(TaskCompletionSource<InteractionResponse?> tcs, Window dialog, ThemeColors theme)
         {
-            // Para Notification, não precisa de scroll nem input (botão está no footer)
-            if (request.Type == InteractionType.Notification)
-            {
-                return new Border
-                {
-                    Background = new SolidColorBrush(theme.Background),
-                    Height = 0
-                };
-            }
-
-            var scrollViewer = new ScrollViewer
-            {
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                Padding = new Thickness(24, 20, 24, 20),
-                Background = new SolidColorBrush(theme.Background)
-            };
-
-            var contentContainer = new StackPanel
-            {
-                Spacing = 16,
-                Orientation = Orientation.Vertical
-            };
-
-            Control? inputControl = request.Type switch
-            {
-                InteractionType.Confirmation => CreateConfirmationControls(request, dialog, tcs),
-                InteractionType.SingleChoice => CreateSingleChoiceControl(request, dialog, tcs),
-                InteractionType.MultiChoice => CreateMultiChoiceControl(request, dialog, tcs),
-                InteractionType.TextInput => CreateTextInputControl(request, dialog, tcs),
-                InteractionType.ChoiceWithText => CreateChoiceWithTextControl(request, dialog, tcs),
-                _ => null
-            };
-
-            if (inputControl != null)
-            {
-                contentContainer.Children.Add(inputControl);
-            }
-
-            scrollViewer.Content = contentContainer;
-            return scrollViewer;
-        }
-
-        /// <summary>
-        /// Cria o painel de footer com botões - APENAS para Notification
-        /// </summary>
-        private Control? CreateFooterPanel(InteractionRequest request, TaskCompletionSource<InteractionResponse?> tcs, Window dialog, ThemeColors theme)
-        {
-            // Apenas Notification usa botões padrão no footer
-            // Os demais tipos criam botões dinâmicos no conteúdo
-            if (request.Type != InteractionType.Notification)
-            {
-                return null;
-            }
-
             var panel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -387,7 +430,263 @@ namespace FlowStep.Renderers
             };
 
             panel.Children.Add(btn);
+
+            return new Border
+            {
+                Background = new SolidColorBrush(theme.Surface),
+                BorderBrush = new SolidColorBrush(theme.Border),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Padding = new Thickness(24, 16, 24, 20),
+                Child = panel
+            };
+        }
+
+        /// <summary>
+        /// Cria footer padrão com Cancelar/Confirmar para tipos que usam inputs
+        /// </summary>
+        private Border CreateStandardFooter(TaskCompletionSource<InteractionResponse?> tcs, Window dialog, ThemeColors theme, InteractionType type)
+        {
+            var panel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Spacing = 12
+            };
+
+            var cancelBtn = new Button { Content = "Cancelar" };
+            var confirmBtn = new Button { Content = "Confirmar", Classes = { "primary" } };
+
+            cancelBtn.Click += (_, _) =>
+            {
+                tcs.TrySetResult(new InteractionResponse { Cancelled = true });
+                dialog.Close();
+            };
+
+            confirmBtn.Click += (_, _) =>
+            {
+                var response = BuildResponseFromCurrentState(type);
+                tcs.TrySetResult(response);
+                dialog.Close();
+            };
+
+            panel.Children.Add(cancelBtn);
+            panel.Children.Add(confirmBtn);
+
+            return new Border
+            {
+                Background = new SolidColorBrush(theme.Surface),
+                BorderBrush = new SolidColorBrush(theme.Border),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Padding = new Thickness(24, 16, 24, 20),
+                Child = panel
+            };
+        }
+
+        /// <summary>
+        /// Constrói a resposta baseada no estado atual dos controles
+        /// </summary>
+        private InteractionResponse BuildResponseFromCurrentState(InteractionType type)
+        {
+            var response = new InteractionResponse { Success = true };
+
+            switch (type)
+            {
+                case InteractionType.SingleChoice:
+                    var selectedValue = (_currentComboBox?.SelectedItem as ComboBoxItem)?.Tag?.ToString()
+                        ?? _currentComboBox?.SelectedItem?.ToString()
+                        ?? string.Empty;
+                    response.SelectedValues = new List<string> { selectedValue };
+                    break;
+
+                case InteractionType.MultiChoice:
+                    response.SelectedValues = _currentCheckBoxes?
+                        .Where(c => c.IsChecked == true)
+                        .Select(c => c.Tag?.ToString() ?? c.Content?.ToString() ?? string.Empty)
+                        .ToList() ?? new List<string>();
+                    break;
+
+                case InteractionType.TextInput:
+                    response.SelectedValues = new List<string> { _currentTextBox?.Text ?? string.Empty };
+                    break;
+
+                case InteractionType.ChoiceWithText:
+                    var values = new List<string>();
+
+                    var comboValue = (_currentComboBox?.SelectedItem as ComboBoxItem)?.Tag?.ToString()
+                        ?? _currentComboBox?.SelectedItem?.ToString();
+                    if (!string.IsNullOrEmpty(comboValue))
+                        values.Add(comboValue);
+
+                    if (!string.IsNullOrEmpty(_currentCustomTextBox?.Text))
+                        values.Add(_currentCustomTextBox.Text);
+
+                    response.SelectedValues = values;
+                    break;
+
+                case InteractionType.Confirmation:
+                    // Para confirmation simples, sempre retorna sucesso se chegou aqui
+                    response.Success = true;
+                    break;
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Cria painel de botões para Confirmation com opções customizadas
+        /// </summary>
+        private StackPanel CreateConfirmationButtonsPanel(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs, ThemeColors theme)
+        {
+            var panel = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Spacing = 12,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            if (request.Options?.Count > 0)
+            {
+                foreach (var option in request.Options)
+                {
+                    var btn = new Button
+                    {
+                        Content = option.Label ?? "OK",
+                        Tag = option.Value,
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        HorizontalContentAlignment = HorizontalAlignment.Center
+                    };
+
+                    if (option.IsDefault)
+                    {
+                        btn.Classes.Add("primary");
+                    }
+
+                    btn.Click += (_, _) =>
+                    {
+                        var value = option.Value ?? string.Empty;
+                        var resp = new InteractionResponse
+                        {
+                            Success = !value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                                   && !value.Equals("cancel", StringComparison.OrdinalIgnoreCase)
+                                   && !value.Equals("false", StringComparison.OrdinalIgnoreCase),
+                            SelectedValues = new List<string> { value }
+                        };
+                        tcs.TrySetResult(resp);
+                        dialog.Close();
+                    };
+
+                    panel.Children.Add(btn);
+                }
+            }
+
             return panel;
+        }
+
+        /// <summary>
+        /// Cria conteúdo simples para Confirmation sem opções customizadas
+        /// </summary>
+        private Control CreateSimpleConfirmationContent(InteractionRequest request, ThemeColors theme)
+        {
+            // Para confirmation simples, apenas mostra a mensagem e usa botões padrão no footer
+            return new Border { Height = 0 };
+        }
+
+        /// <summary>
+        /// Cria ComboBox para SingleChoice
+        /// </summary>
+        private ComboBox CreateSingleChoiceComboBox(InteractionRequest request, ThemeColors theme)
+        {
+            var combo = new ComboBox
+            {
+                PlaceholderText = "Selecione uma opção...",
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            if (request.Options != null)
+            {
+                foreach (var opt in request.Options)
+                {
+                    var item = new ComboBoxItem
+                    {
+                        Content = opt.Label,
+                        Tag = opt.Value
+                    };
+                    combo.Items.Add(item);
+                }
+
+                var defaultIndex = request.Options.FindIndex(o => o.IsDefault);
+                if (defaultIndex >= 0 && defaultIndex < combo.Items.Count)
+                    combo.SelectedIndex = defaultIndex;
+            }
+
+            return combo;
+        }
+
+        /// <summary>
+        /// Cria CheckBoxes para MultiChoice
+        /// </summary>
+        private List<CheckBox> CreateMultiChoiceCheckBoxes(InteractionRequest request, ThemeColors theme)
+        {
+            var checkBoxes = new List<CheckBox>();
+
+            if (request.Options != null)
+            {
+                foreach (var option in request.Options)
+                {
+                    var cb = new CheckBox
+                    {
+                        Content = option.Label,
+                        Tag = option.Value,
+                        IsChecked = option.IsDefault,
+                        HorizontalAlignment = HorizontalAlignment.Left
+                    };
+                    checkBoxes.Add(cb);
+                }
+            }
+
+            return checkBoxes;
+        }
+
+        /// <summary>
+        /// Cria TextBox para TextInput
+        /// </summary>
+        private TextBox CreateTextInputBox(InteractionRequest request, ThemeColors theme)
+        {
+            return new TextBox
+            {
+                Watermark = request.CustomInputPlaceholder ?? "Digite aqui...",
+                Text = request.Message ?? string.Empty,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+        }
+
+        /// <summary>
+        /// Cria controles para ChoiceWithText
+        /// </summary>
+        private (ComboBox combo, TextBox textBox) CreateChoiceWithTextControls(InteractionRequest request, ThemeColors theme)
+        {
+            var combo = new ComboBox
+            {
+                PlaceholderText = "Selecione uma opção...",
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            if (request.Options != null)
+            {
+                foreach (var opt in request.Options)
+                {
+                    combo.Items.Add(new ComboBoxItem { Content = opt.Label, Tag = opt.Value });
+                }
+            }
+
+            var textBox = new TextBox
+            {
+                Watermark = request.CustomInputPlaceholder ?? "Ou digite um valor customizado...",
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+
+            return (combo, textBox);
         }
 
         /// <summary>
@@ -707,267 +1006,6 @@ namespace FlowStep.Renderers
             public Color Error { get; set; }
             public Color Success { get; set; }
             public Color Warning { get; set; }
-        }
-
-        private Control CreateConfirmationControls(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs)
-        {
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, HorizontalAlignment = HorizontalAlignment.Right };
-
-            if (request.Options?.Count > 0)
-            {
-                foreach (var option in request.Options)
-                {
-                    var btn = new Button { Content = option.Label ?? "OK", Tag = option.Value };
-                    btn.Click += (_, _) =>
-                    {
-                        var value = option.Value ?? string.Empty;
-                        var resp = new InteractionResponse
-                        {
-                            Success = !value.Equals("no", StringComparison.OrdinalIgnoreCase),
-                            SelectedValues = new List<string> { value }
-                        };
-                        tcs.TrySetResult(resp);
-                        dialog.Close();
-                    };
-                    panel.Children.Add(btn);
-                }
-            }
-            else
-            {
-                var yes = new Button { Content = "Sim", Classes = { "primary" } };
-                var no = new Button { Content = "Não" };
-
-                yes.Click += (_, _) =>
-                {
-                    tcs.TrySetResult(new InteractionResponse { Success = true });
-                    dialog.Close();
-                };
-
-                no.Click += (_, _) =>
-                {
-                    tcs.TrySetResult(new InteractionResponse { Cancelled = true });
-                    dialog.Close();
-                };
-
-                panel.Children.Add(no);
-                panel.Children.Add(yes);
-            }
-
-            return panel;
-        }
-
-        private Control CreateSingleChoiceControl(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs)
-        {
-            var panel = new StackPanel { Spacing = 16 };
-
-            var combo = new ComboBox();
-
-            if (request.Options != null && request.Options.Count > 0)
-            {
-                foreach (var opt in request.Options)
-                {
-                    combo.Items.Add(new ComboBoxItem { Content = opt.Label, Tag = opt.Value });
-                }
-
-                var defaultIndex = request.Options.FindIndex(o => o.IsDefault);
-                if (defaultIndex >= 0)
-                    combo.SelectedIndex = defaultIndex;
-            }
-
-            panel.Children.Add(combo);
-
-            var buttonsPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 12,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-
-            var cancelBtn = new Button { Content = "Cancelar" };
-            var confirmBtn = new Button { Content = "Confirmar", Classes = { "primary" } };
-
-            cancelBtn.Click += (_, _) =>
-            {
-                tcs.TrySetResult(new InteractionResponse { Cancelled = true });
-                dialog.Close();
-            };
-
-            confirmBtn.Click += (_, _) =>
-            {
-                var selected = (combo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? string.Empty;
-                var resp = new InteractionResponse { Success = true, SelectedValues = new List<string> { selected } };
-                tcs.TrySetResult(resp);
-                dialog.Close();
-            };
-
-            buttonsPanel.Children.Add(cancelBtn);
-            buttonsPanel.Children.Add(confirmBtn);
-            panel.Children.Add(buttonsPanel);
-
-            return panel;
-        }
-
-        private Control CreateMultiChoiceControl(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs)
-        {
-            var panel = new StackPanel { Spacing = 12 };
-
-            if (request.Options != null)
-            {
-                foreach (var option in request.Options)
-                {
-                    var cb = new CheckBox { Content = option.Label, Tag = option.Value, IsChecked = option.IsDefault };
-                    panel.Children.Add(cb);
-                }
-            }
-
-            var buttonsPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 12,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-
-            var cancelBtn = new Button { Content = "Cancelar" };
-            var confirmBtn = new Button { Content = "Confirmar", Classes = { "primary" } };
-
-            cancelBtn.Click += (_, _) =>
-            {
-                tcs.TrySetResult(new InteractionResponse { Cancelled = true });
-                dialog.Close();
-            };
-
-            confirmBtn.Click += (_, _) =>
-            {
-                var selected = panel.Children.OfType<CheckBox>()
-                    .Where(c => c.IsChecked == true)
-                    .Select(c => c.Tag?.ToString() ?? string.Empty)
-                    .ToList();
-
-                var resp = new InteractionResponse { Success = true, SelectedValues = selected };
-                tcs.TrySetResult(resp);
-                dialog.Close();
-            };
-
-            buttonsPanel.Children.Add(cancelBtn);
-            buttonsPanel.Children.Add(confirmBtn);
-            panel.Children.Add(buttonsPanel);
-
-            return panel;
-        }
-
-        private Control CreateTextInputControl(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs)
-        {
-            var panel = new StackPanel { Spacing = 16 };
-
-            var tb = new TextBox
-            {
-                Watermark = request.CustomInputPlaceholder ?? "Digite aqui...",
-                Text = request.Message ?? string.Empty
-            };
-
-            panel.Children.Add(tb);
-
-            var buttonsPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 12,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-
-            var cancelBtn = new Button { Content = "Cancelar" };
-            var confirmBtn = new Button { Content = "Confirmar", Classes = { "primary" } };
-
-            cancelBtn.Click += (_, _) =>
-            {
-                tcs.TrySetResult(new InteractionResponse { Cancelled = true });
-                dialog.Close();
-            };
-
-            confirmBtn.Click += (_, _) =>
-            {
-                var resp = new InteractionResponse
-                {
-                    Success = true,
-                    SelectedValues = new List<string> { tb.Text ?? string.Empty }
-                };
-                tcs.TrySetResult(resp);
-                dialog.Close();
-            };
-
-            buttonsPanel.Children.Add(cancelBtn);
-            buttonsPanel.Children.Add(confirmBtn);
-            panel.Children.Add(buttonsPanel);
-
-            return panel;
-        }
-
-        private Control CreateChoiceWithTextControl(InteractionRequest request, Window dialog, TaskCompletionSource<InteractionResponse?> tcs)
-        {
-            var panel = new StackPanel { Spacing = 12 };
-
-            var combo = new ComboBox();
-
-            if (request.Options != null)
-            {
-                foreach (var opt in request.Options)
-                {
-                    combo.Items.Add(new ComboBoxItem { Content = opt.Label, Tag = opt.Value });
-                }
-            }
-
-            panel.Children.Add(combo);
-
-            TextBox? tb = null;
-
-            if (request.AllowCustomInput)
-            {
-                tb = new TextBox
-                {
-                    Watermark = request.CustomInputPlaceholder ?? "Digite valor customizado...",
-                    Margin = new Thickness(0, 8, 0, 0)
-                };
-                panel.Children.Add(tb);
-            }
-
-            var buttonsPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 12,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-
-            var cancelBtn = new Button { Content = "Cancelar" };
-            var confirmBtn = new Button { Content = "Confirmar", Classes = { "primary" } };
-
-            cancelBtn.Click += (_, _) =>
-            {
-                tcs.TrySetResult(new InteractionResponse { Cancelled = true });
-                dialog.Close();
-            };
-
-            confirmBtn.Click += (_, _) =>
-            {
-                var values = new List<string>();
-
-                var selected = (combo.SelectedItem as ComboBoxItem)?.Tag?.ToString();
-                if (!string.IsNullOrEmpty(selected))
-                    values.Add(selected);
-
-                if (tb != null && !string.IsNullOrEmpty(tb.Text))
-                    values.Add(tb.Text);
-
-                var resp = new InteractionResponse { Success = true, SelectedValues = values };
-                tcs.TrySetResult(resp);
-                dialog.Close();
-            };
-
-            buttonsPanel.Children.Add(cancelBtn);
-            buttonsPanel.Children.Add(confirmBtn);
-            panel.Children.Add(buttonsPanel);
-
-            return panel;
         }
 
         public void Dispose()
