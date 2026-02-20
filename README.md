@@ -66,32 +66,46 @@ FlowStep.MCP.Library/
 └── FlowStep.MCP.Library.csproj
 ```
 
-## 🚀 Quick Start
 
-### Prerequisites
-*   .NET 10.0 SDK
-*   A compatible IDE (Visual Studio, VS Code, or Rider)
+## 🌐 Configuration in MCP Clients
 
-### Building the Project
+To integrate FlowStep with your favorite AI editor or client (e.g., **Cursor, Windsurf, Claude Desktop**, or **Cline**), you need to add the server configuration to your client's settings.
 
-```bash
-cd FlowStep.MCP.Library
-dotnet build
+### 1. HTTP Transport (Recommended)
+Use this configuration if you are running the server via HTTP (e.g., using `dotnet run` or a hosted server).
+
+```json
+{
+  "mcpServers": {
+    "FlowStep.MCP": {
+      "url": "http://localhost:59170"
+    }
+  }
+}
 ```
 
-### Running the Examples
+### 2. STDIO Transport (Local Execution)
+Use this configuration to launch the server directly from the project folder.
 
-1.  **CLI Demo**:
-    Navigate to the `FlowStepExample` directory and run:
-    ```bash
-    dotnet run
-    ```
+```json
+{
+  "mcpServers": {
+    "FlowStep.MCP": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "src/FlowStep.MCP/FlowStep.MCP.csproj"
+      ]
+    }
+  }
+}
+```
 
-2.  **MCP HTTP Server**:
-    Navigate to the `FlowStepMCP` directory and run:
-    ```bash
-    dotnet run
-    ```
+***
+
+### Note on the previous C# code
+The Dependency Injection code provided in the previous section (`services.AddFlowStep(...)`) is **internal** to your application and is not used for configuring the external MCP client. It is used when you are *developing* the FlowStep server itself.
 
 ## 🛠️ MCP Tools Reference
 
@@ -164,28 +178,7 @@ Displays a notification indicating the progress of an operation. Useful for long
     *   `status` (string): Current status or progress message.
 *   **Returns**: Status of the operation.
 
-## 📝 Configuration & Dependency Injection
 
-To use FlowStep in your application, register it with the .NET Dependency Injection (DI) container using the provided extension method.
-
-```csharp
-using FlowStep;
-using FlowStep.Extensions;
-
-// Configure services
-var services = new ServiceCollection();
-
-// Register FlowStep with GUI mode (requires Avalonia)
-services.AddFlowStep(McpMode.Gui);
-
-// Alternatively, register with CLI mode
-// services.AddFlowStep(McpMode.Cli);
-
-var serviceProvider = services.BuildServiceProvider();
-
-// Obtain the MCP service
-var mcpService = serviceProvider.GetRequiredService<FlowStepMcpService>();
-```
 
 ## 🎨 Interaction Types
 
@@ -204,14 +197,8 @@ The library handles six distinct interaction types defined in `InteractionType`:
 *   **Renderer Layer**: `IInteractionRenderer` defines the contract. Implementations include `CliInteractionRenderer` and `AvaloniaUIRenderer`.
 *   **MCP Layer**: `FlowStepMcpService` wraps the logic in tools that conform to the Model Context Protocol, allowing LLMs to invoke them transparently.
 
-## 🔧 Dependencies
+## License
 
-The project relies on the following NuGet packages:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-*   **Microsoft.Extensions.DependencyInjection**: 11.0.0
-*   **Microsoft.SemanticKernel**: 1.71.0
-*   **ModelContextProtocol**: 0.8.0-preview.1
-*   **ModelContextProtocol.AspNetCore**: 0.8.0-preview.1
-*   **Avalonia**: 11.2.3
-*   **Avalonia.Desktop**: 11.2.3
-*   **Avalonia.Themes.Fluent**: 11.2.3
+<p align="center">Made with ❤️</p>
