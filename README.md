@@ -8,6 +8,9 @@
 
 A complete Model Context Protocol (MCP) server designed to facilitate seamless interaction between Large Language Models (LLMs) and end-users. It provides a robust set of tools for notifications, confirmations, selections, and text inputs, supporting GUI rendering mode.
 
+<video src="assets/StepFlowMCP.mp4" controls style="width: 80%; max-width: 800px;  margin: 0 auto;"></video>
+
+
 ## 🎯 Overview
 
 FlowStep acts as an abstraction layer for user interactions. It exposes standard MCP tools that LLMs can invoke to interact with the user based on the application's configuration (Console or GUI).
