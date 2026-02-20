@@ -10,6 +10,8 @@ A complete Model Context Protocol (MCP) server designed to facilitate seamless i
 
 [▶️ Assista ao vídeo de demonstração](assets/StepFlowMCP.mp4)
 
+![Demonstração do FlowStep](assets/StepFlowMCP.gif)
+
 
 ## 🎯 Overview
 
