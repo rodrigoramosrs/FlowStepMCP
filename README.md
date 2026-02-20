@@ -8,7 +8,7 @@
 
 A complete Model Context Protocol (MCP) server designed to facilitate seamless interaction between Large Language Models (LLMs) and end-users. It provides a robust set of tools for notifications, confirmations, selections, and text inputs, supporting GUI rendering mode.
 
-<video src="assets/StepFlowMCP.mp4" controls style="width: 80%; max-width: 800px;  margin: 0 auto;"></video>
+[▶️ Assista ao vídeo de demonstração](assets/StepFlowMCP.mp4)
 
 
 ## 🎯 Overview
