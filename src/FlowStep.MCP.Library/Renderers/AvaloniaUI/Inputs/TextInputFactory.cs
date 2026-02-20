@@ -7,24 +7,16 @@ namespace FlowStep.Renderers.AvaloniaUI.Inputs
 {
     public static class TextInputFactory
     {
-        private static TextBox? _currentTextBox = null;
-
         public static TextBox CreateTextInputBox(
             InteractionRequest request,
             ThemeColors theme)
         {
-            var textBox = new TextBox
+            return new TextBox
             {
                 Watermark = request.CustomInputPlaceholder ?? "Digite aqui...",
-                Text = request.Message ?? string.Empty,
+                Text = string.Empty, // CORREÇÃO: Iniciar vazio, não usar request.Message
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
-
-            _currentTextBox = textBox;
-
-            return textBox;
         }
-
-        public static TextBox? GetCurrentTextBox() => _currentTextBox;
     }
 }

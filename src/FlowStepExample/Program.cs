@@ -2,7 +2,6 @@
 using FlowStep;
 using FlowStep.Contracts;
 using FlowStep.Extensions;
-using FlowStep.MCP.Library.Renderers.AvaloniaUI;
 using FlowStep.McpServices;
 using FlowStep.Models;
 using FlowStep.Renderers; // necessário para AvaloniaGuiRenderer
@@ -153,8 +152,7 @@ namespace FlowStepExample
                 Console.WriteLine("7. Demo progresso (ShowProgressAsync)");
                 Console.WriteLine("0. Sair");
                 Console.Write("> ");
-                 choice++;
-                var input = choice.ToString();// Console.ReadLine()?.Trim();
+                var input = Console.ReadLine()?.Trim();
                 if (!int.TryParse(input, out int option))
                 {
                     Console.WriteLine("Opção inválida.");

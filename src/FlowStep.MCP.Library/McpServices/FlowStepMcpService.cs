@@ -234,15 +234,16 @@ namespace FlowStep.McpServices
         /// <param name="title">Title of the text field (optional)</param>
         /// <param name="placeholder">Placeholder text (optional; default: "Type here...")</param>
         /// <returns>The text entered by the user</returns>
+
         [McpServerTool]
-        [Description("Requests that the user type free-form text. Returns the text entered by the user. Useful for data inputs such as name, description, comments, etc.")]
+        [Description("Requests that the user type free-form text. Returns the text entered by the user.")]
         public async Task<string> AskUserForTextAsync(
             [Description("Instruction or message to the user")]
-            string message,
+    string message,
             [Description("Title of the text field (optional)")]
-            string? title,
+    string? title,
             [Description("Placeholder text shown in the input field (optional; default: 'Type here...')")]
-            string placeholder)
+    string placeholder)
         {
             _logger.LogInformation("Text input requested: {Title} - {Message}", title ?? "System", message);
 
@@ -256,9 +257,14 @@ namespace FlowStep.McpServices
 
             var response = await _flowStepService.InteractAsync(request);
 
-            if (response.Success && response.TextValue != null)
+            // CORREÇÃO: Verificar TextValue primeiro, depois SelectedValues como fallback
+            if (response.Success)
             {
-                return response.TextValue;
+                if (!string.IsNullOrEmpty(response.TextValue))
+                    return response.TextValue;
+
+                if (response.SelectedValues != null && response.SelectedValues.Count > 0)
+                    return response.SelectedValues[0];
             }
 
             return "";
