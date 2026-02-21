@@ -155,39 +155,56 @@ namespace FlowStep
             // 1. Appsettings.json (base)
             configBuilder.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
-            // 2. Appsettings.{Environment}.json
-            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-            configBuilder.AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: true);
-
-            // 3. Environment Variables (prefixo FLOWSTEP_)
+            // 2. Environment Variables (prefixo FLOWSTEP_)
             configBuilder.AddEnvironmentVariables(prefix: "FLOWSTEP_");
 
-            // 4. Command Line Args
-            configBuilder.AddCommandLine(args);
+            // 3. Command Line Args - ADICIONAR ANTES de Build()
+            if (args.Length > 0)
+                configBuilder.AddCommandLine(args);
 
-            // 5. Config personalizado se especificado
+            // 4. Config personalizado se especificado
             if (!string.IsNullOrEmpty(parsedOptions.ConfigPath))
             {
                 configBuilder.AddJsonFile(parsedOptions.ConfigPath, optional: false);
             }
 
+            // Build configuration
             var configuration = configBuilder.Build();
 
-            // Merge parsed options (maior prioridade)
-            if (!string.IsNullOrEmpty(parsedOptions.Mode))
+            // Merge parsed options APENAS se foram explicitamente fornecidos via CLI
+            // Verificar se o argumento --mode foi realmente passado
+            if (IsArgPresent(args, "--mode", "-m") && !string.IsNullOrEmpty(parsedOptions.Mode))
             {
                 configuration["Mode"] = parsedOptions.Mode;
             }
-            if (!string.IsNullOrEmpty(parsedOptions.TelegramToken))
+
+            if (IsArgPresent(args, "--telegram-token", "-t") && !string.IsNullOrEmpty(parsedOptions.TelegramToken))
             {
                 configuration["Telegram:BotToken"] = parsedOptions.TelegramToken;
             }
-            if (parsedOptions.TelegramChatId.HasValue)
+
+            if (IsArgPresent(args, "--telegram-chat-id", "-c") && parsedOptions.TelegramChatId.HasValue)
             {
                 configuration["Telegram:ChatId"] = parsedOptions.TelegramChatId.Value.ToString();
             }
 
             return configuration;
+        }
+
+        /// <summary>
+        /// Verifica se um argumento foi explicitamente presente na linha de comando
+        /// </summary>
+        private static bool IsArgPresent(string[] args, params string[] argNames)
+        {
+            for (int i = 0; i < args.Length; i++)
+            {
+                foreach (var argName in argNames)
+                {
+                    if (args[i].Equals(argName, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
