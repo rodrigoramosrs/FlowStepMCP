@@ -7,9 +7,15 @@
 
 A complete Model Context Protocol (MCP) server designed to facilitate seamless interaction between Large Language Models (LLMs) and end-users. It provides a robust set of tools for notifications, confirmations, selections, and text inputs, supporting multiple rendering modes including Console, GUI, and Telegram Bot.
 
+## 🎯 Native Desktop UI
 [▶️ Watch the demonstration video](assets/StepFlowMCP.mp4)
 
 ![FlowStep Demonstration](assets/StepFlowMCP.gif)
+
+## 🎯 Telegram UI
+[▶️ Watch the demonstration video](assets/StepFlowMCP-telegram.mp4)
+
+![FlowStep Demonstration](assets/StepFlowMCP-telegram.gif)
 
 ## 🎯 Overview
 
