@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowStep.MCP.Library", "Flo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowStepExample", "FlowStepExample\FlowStepExample.csproj", "{F05C9624-91E3-4E24-97C6-F3361B942C5A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B5330A69-3602-453F-B2EA-B07E6E797EA0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowStep.Tests", "..\..\edgepilot\src\EdgePilot.Mcp.Service\bin\Release\net10.0\publish\mcp\files\FlowStep.Tests\FlowStep.Tests.csproj", "{2E597369-8309-47E7-C178-7E000BC7D531}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,12 +33,17 @@ Global
 		{F05C9624-91E3-4E24-97C6-F3361B942C5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F05C9624-91E3-4E24-97C6-F3361B942C5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F05C9624-91E3-4E24-97C6-F3361B942C5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E597369-8309-47E7-C178-7E000BC7D531}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E597369-8309-47E7-C178-7E000BC7D531}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E597369-8309-47E7-C178-7E000BC7D531}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E597369-8309-47E7-C178-7E000BC7D531}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F05C9624-91E3-4E24-97C6-F3361B942C5A} = {55A98CF6-6A22-4AD8-BF85-49D475E40193}
+		{2E597369-8309-47E7-C178-7E000BC7D531} = {B5330A69-3602-453F-B2EA-B07E6E797EA0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A32F046C-BD2F-4E7A-8FC1-2F18E34E9EDD}
