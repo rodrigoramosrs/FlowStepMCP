@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	  <EnableAvaloniaXamlCompilation>true</EnableAvaloniaXamlCompilation>
+  <Version>1.0.1</Version>
   </PropertyGroup>
 	<!-- Semantic Kernel SDK -->
 	<ItemGroup>
