@@ -32,6 +32,7 @@
 		<AvaloniaResource Include="MainWindow.xaml" />
 	</ItemGroup>
 	
+	
 	<ItemGroup>
 		<None Update="App.xaml">
 			<Generator>MSBuild:Compile</Generator>

@@ -21,8 +21,9 @@
 		<PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.8.0-preview.1" />
 	</ItemGroup>
 
+	
 	<ItemGroup>
-	  <ProjectReference Include="..\FlowStep.MCP.Library\FlowStep.MCP.Library.csproj" />
+	  <ProjectReference Include="..\FlowStepMCP.Library\FlowStepMCP.Library.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
